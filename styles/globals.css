@@ -56,14 +56,14 @@ body::after {
   }
 
   .pill {
-    @apply rounded-full border border-border/60 px-3 py-1 text-xs uppercase tracking-[0.18em] text-muted;
+    @apply rounded-full border border-border px-3 py-1 text-xs uppercase tracking-[0.18em] text-muted;
   }
 
   .chip {
-    @apply inline-flex items-center gap-2 rounded-full border border-border/60 px-3 py-1 text-xs font-medium;
+    @apply inline-flex items-center gap-2 rounded-full border border-border px-3 py-1 text-xs font-medium;
   }
 
   .panel {
-    @apply rounded-2xl border border-border/70 bg-white/80 shadow-soft;
+    @apply rounded-2xl border border-border bg-white/80 shadow-soft;
   }
 }
