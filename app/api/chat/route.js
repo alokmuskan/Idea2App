@@ -8,9 +8,24 @@ import { fireAndForget, insertPrompt } from "../../../lib/supabase.js";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-function buildSystemContext(systemPrompt, projectState) {
+function getIntentDirective(intent) {
+  switch (intent) {
+    case "refine":
+      return "MODE: REFINE. Output only changed files (diff-only). Do not recreate unchanged files.";
+    case "debug":
+      return "MODE: DEBUG. Output only a <fix> block with minimal changes to resolve the error.";
+    case "explain":
+      return "MODE: EXPLAIN. Output a single <explain> block. Do not output <project>, <file>, or <fix> tags.";
+    case "create":
+    default:
+      return "MODE: CREATE. Produce a complete initial build with required files.";
+  }
+}
+
+function buildSystemContext(systemPrompt, projectState, intent) {
   const state = projectState && typeof projectState === "object" ? projectState : {};
-  return `${systemPrompt}\n\nPROJECT STATE JSON:\n${JSON.stringify(state, null, 2)}`;
+  const intentLine = getIntentDirective(intent);
+  return `${systemPrompt}\n\n${intentLine}\n\nPROJECT STATE JSON:\n${JSON.stringify(state, null, 2)}`;
 }
 
 function sanitizeMessages(messages) {
@@ -75,7 +90,6 @@ export async function POST(req) {
   const maxTokens = body.maxTokens;
   const projectState = body.projectState || {};
   const systemPrompt = body.systemPrompt || SYSTEM_PROMPT;
-  const system = buildSystemContext(systemPrompt, projectState);
   const stream = body.stream !== false;
 
   const projectId = body.projectId || null;
@@ -85,6 +99,7 @@ export async function POST(req) {
   }
 
   const intent = body.intent || (await classifyIntent({ messages, projectState, provider }));
+  const system = buildSystemContext(systemPrompt, projectState, intent);
 
   let plan = "";
   if (intent === "create" || intent === "refine") {
