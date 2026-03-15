@@ -1,3 +1,7 @@
+// Main AI orchestration endpoint:
+// - classify intent
+// - optionally plan
+// - stream generator output as SSE
 import { SYSTEM_PROMPT } from "../../../lib/systemPrompt.js";
 import { classifyIntent } from "../../../lib/intentClassifier.js";
 import { runPlanningStep } from "../../../lib/planningStep.js";
@@ -8,6 +12,7 @@ import { fireAndForget, insertPrompt } from "../../../lib/supabase.js";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+// Add a lightweight mode directive to steer the generator.
 function getIntentDirective(intent) {
   switch (intent) {
     case "refine":
@@ -22,12 +27,14 @@ function getIntentDirective(intent) {
   }
 }
 
+// Combine the locked system prompt, mode directive, and project state JSON.
 function buildSystemContext(systemPrompt, projectState, intent) {
   const state = projectState && typeof projectState === "object" ? projectState : {};
   const intentLine = getIntentDirective(intent);
   return `${systemPrompt}\n\n${intentLine}\n\nPROJECT STATE JSON:\n${JSON.stringify(state, null, 2)}`;
 }
 
+// Ensure only user/assistant messages are sent to providers.
 function sanitizeMessages(messages) {
   if (!Array.isArray(messages)) return [];
   return messages
@@ -36,6 +43,7 @@ function sanitizeMessages(messages) {
     .map((m) => ({ role: m.role, content: m.content }));
 }
 
+// Used for prompt history persistence.
 function getLastUserMessage(messages) {
   for (let i = messages.length - 1; i >= 0; i -= 1) {
     if (messages[i]?.role === "user") return messages[i].content;
@@ -43,6 +51,7 @@ function getLastUserMessage(messages) {
   return "";
 }
 
+// SSE response headers (no buffering).
 function sseHeaders() {
   return {
     "Content-Type": "text/event-stream; charset=utf-8",
@@ -52,6 +61,7 @@ function sseHeaders() {
   };
 }
 
+// Send a data-only SSE event (one message).
 function enqueueSSE(controller, encoder, text) {
   if (!text) return;
   const lines = String(text).split(/\r?\n/);
@@ -61,6 +71,7 @@ function enqueueSSE(controller, encoder, text) {
   controller.enqueue(encoder.encode("\n"));
 }
 
+// Send a named SSE event (used for errors).
 function enqueueEvent(controller, encoder, event, data) {
   controller.enqueue(encoder.encode(`event: ${event}\n`));
   const lines = String(data).split(/\r?\n/);
@@ -70,6 +81,8 @@ function enqueueEvent(controller, encoder, event, data) {
   controller.enqueue(encoder.encode("\n"));
 }
 
+// POST /api/chat
+// Body: { messages, provider, model, projectState, stream, ... }
 export async function POST(req) {
   let body = {};
   try {
@@ -102,6 +115,7 @@ export async function POST(req) {
   const system = buildSystemContext(systemPrompt, projectState, intent);
 
   let plan = "";
+  // Planning step is only useful for create/refine flows.
   if (intent === "create" || intent === "refine") {
     try {
       plan = await runPlanningStep({
@@ -114,6 +128,7 @@ export async function POST(req) {
     }
   }
 
+  // Non-streaming fallback returns JSON for easier debugging.
   if (!stream) {
     const content = await runNonStreaming({
       provider,
@@ -128,6 +143,7 @@ export async function POST(req) {
 
   const encoder = new TextEncoder();
 
+  // Streaming mode: emit <plan> first, then the generator stream.
   const responseStream = new ReadableStream({
     async start(controller) {
       try {

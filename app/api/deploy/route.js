@@ -1,8 +1,10 @@
+// Vercel deployment endpoint. Accepts a file tree and returns a live URL.
 import { insertDeployment, fireAndForget } from "../../../lib/supabase.js";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+// Accept either array of {path, content} or object map { path: content }.
 function normalizeFilesInput(files) {
   if (Array.isArray(files)) {
     return files
@@ -21,6 +23,7 @@ function normalizeFilesInput(files) {
   return [];
 }
 
+// Vercel project names must be URL-safe.
 function sanitizeName(name) {
   return String(name || "ai-builder-app")
     .toLowerCase()
@@ -29,6 +32,8 @@ function sanitizeName(name) {
     .replace(/^-|-$/g, "");
 }
 
+// POST /api/deploy
+// Body: { files, name, target, teamId, snapshotId }
 export async function POST(req) {
   let body = {};
   try {

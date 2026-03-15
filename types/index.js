@@ -1,3 +1,4 @@
+// Shared data shapes (documentation-only, no runtime exports).
 /**
  * @typedef {Object} Message
  * @property {"user"|"assistant"|"system"} role

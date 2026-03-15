@@ -1,6 +1,8 @@
+// GitHub push endpoint. Creates a repo (if needed) and writes files via REST API.
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+// Accept either array of {path, content} or object map { path: content }.
 function normalizeFilesInput(files) {
   if (Array.isArray(files)) {
     return files
@@ -19,6 +21,7 @@ function normalizeFilesInput(files) {
   return [];
 }
 
+// Repo name sanitizer for GitHub.
 function sanitizeRepoName(name) {
   return String(name || "ai-builder-app")
     .toLowerCase()
@@ -27,10 +30,12 @@ function sanitizeRepoName(name) {
     .replace(/^-|-$/g, "");
 }
 
+// Encode path segments for the GitHub contents API.
 function encodePath(path) {
   return path.split("/").map(encodeURIComponent).join("/");
 }
 
+// Minimal GitHub REST wrapper with required headers.
 async function githubRequest(url, token, options = {}) {
   const res = await fetch(url, {
     ...options,
@@ -44,6 +49,7 @@ async function githubRequest(url, token, options = {}) {
   return res;
 }
 
+// Fetch the authenticated user to infer owner when not provided.
 async function getViewer(token) {
   const res = await githubRequest("https://api.github.com/user", token);
   if (!res.ok) {
@@ -53,6 +59,7 @@ async function getViewer(token) {
   return res.json();
 }
 
+// Create repo if it doesn't exist; return owner/repo identifiers.
 async function ensureRepo({ token, owner, repo, isPrivate }) {
   if (owner && repo) return { owner, repo };
   const viewer = await getViewer(token);
@@ -78,6 +85,7 @@ async function ensureRepo({ token, owner, repo, isPrivate }) {
   throw new Error(`GitHub repo create failed: ${text}`);
 }
 
+// Fetch existing file SHA to update content if file already exists.
 async function getFileSha({ token, owner, repo, path }) {
   const url = `https://api.github.com/repos/${owner}/${repo}/contents/${encodePath(path)}`;
   const res = await githubRequest(url, token);
@@ -90,6 +98,7 @@ async function getFileSha({ token, owner, repo, path }) {
   return data.sha || null;
 }
 
+// Create or update a file using the contents API.
 async function putFile({ token, owner, repo, path, content, message }) {
   const sha = await getFileSha({ token, owner, repo, path });
   const url = `https://api.github.com/repos/${owner}/${repo}/contents/${encodePath(path)}`;
@@ -111,6 +120,8 @@ async function putFile({ token, owner, repo, path, content, message }) {
   return res.json();
 }
 
+// POST /api/github
+// Body: { token, files, repo, owner, private, message }
 export async function POST(req) {
   let body = {};
   try {

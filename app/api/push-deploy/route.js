@@ -1,8 +1,10 @@
+// Combined GitHub push + Vercel deploy endpoint.
 import { insertDeployment, fireAndForget } from "../../../lib/supabase.js";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
+// Accept either array of {path, content} or object map { path: content }.
 function normalizeFilesInput(files) {
   if (Array.isArray(files)) {
     return files
@@ -21,6 +23,7 @@ function normalizeFilesInput(files) {
   return [];
 }
 
+// Sanitize project/repo names for external APIs.
 function sanitizeName(name) {
   return String(name || "ai-builder-app")
     .toLowerCase()
@@ -29,10 +32,12 @@ function sanitizeName(name) {
     .replace(/^-|-$/g, "");
 }
 
+// Encode path segments for the GitHub contents API.
 function encodePath(path) {
   return path.split("/").map(encodeURIComponent).join("/");
 }
 
+// Minimal GitHub REST wrapper with required headers.
 async function githubRequest(url, token, options = {}) {
   const res = await fetch(url, {
     ...options,
@@ -46,6 +51,7 @@ async function githubRequest(url, token, options = {}) {
   return res;
 }
 
+// Fetch the authenticated user to infer owner when not provided.
 async function getViewer(token) {
   const res = await githubRequest("https://api.github.com/user", token);
   if (!res.ok) {
@@ -55,6 +61,7 @@ async function getViewer(token) {
   return res.json();
 }
 
+// Create repo if it doesn't exist; return owner/repo identifiers.
 async function ensureRepo({ token, owner, repo, isPrivate }) {
   if (owner && repo) return { owner, repo };
   const viewer = await getViewer(token);
@@ -79,6 +86,7 @@ async function ensureRepo({ token, owner, repo, isPrivate }) {
   throw new Error(`GitHub repo create failed: ${text}`);
 }
 
+// Fetch existing file SHA to update content if file already exists.
 async function getFileSha({ token, owner, repo, path }) {
   const url = `https://api.github.com/repos/${owner}/${repo}/contents/${encodePath(path)}`;
   const res = await githubRequest(url, token);
@@ -91,6 +99,7 @@ async function getFileSha({ token, owner, repo, path }) {
   return data.sha || null;
 }
 
+// Create or update a file using the contents API.
 async function putFile({ token, owner, repo, path, content, message }) {
   const sha = await getFileSha({ token, owner, repo, path });
   const url = `https://api.github.com/repos/${owner}/${repo}/contents/${encodePath(path)}`;
@@ -112,6 +121,7 @@ async function putFile({ token, owner, repo, path, content, message }) {
   return res.json();
 }
 
+// Deploy a file tree to Vercel and return the deployment URL.
 async function deployToVercel({ files, name, target, teamId, token }) {
   const payload = {
     name,
@@ -136,6 +146,7 @@ async function deployToVercel({ files, name, target, teamId, token }) {
   return { url: data?.url ? `https://${data.url}` : null, deployment: data };
 }
 
+// Push the file tree to GitHub (create repo if needed).
 async function pushToGitHub({ files, token, repoName, owner, isPrivate, message }) {
   const repoInfo = await ensureRepo({ token, owner, repo: repoName, isPrivate });
   await Promise.all(
@@ -153,6 +164,8 @@ async function pushToGitHub({ files, token, repoName, owner, isPrivate, message 
   return { repoUrl: `https://github.com/${repoInfo.owner}/${repoInfo.repo}`, owner: repoInfo.owner, repo: repoInfo.repo };
 }
 
+// POST /api/push-deploy
+// Body: { files, name, repo, githubToken, teamId, target, snapshotId }
 export async function POST(req) {
   let body = {};
   try {
