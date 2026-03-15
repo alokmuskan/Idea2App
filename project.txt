@@ -1,0 +1,880 @@
+════════════════════════════════════════════════════════════════════
+  PROJECT PLAN — AI APP BUILDER (HACKATHON)
+  36–48 Hour Build · Solo · Open Category
+════════════════════════════════════════════════════════════════════
+
+
+────────────────────────────────────────────────────────────────────
+  PITCH
+────────────────────────────────────────────────────────────────────
+
+"Every other AI builder generates code. We build products —
+planned, deployed, and on GitHub before you finish your coffee."
+
+Core Idea:
+User describes their product → AI plans and builds it live →
+user refines through chat → one click ships to Vercel + GitHub.
+
+Target User : Non-technical founders, designers, anyone with an idea.
+Hackathon   : Open category (qualifies for AI track)
+Team        : Solo
+
+
+────────────────────────────────────────────────────────────────────
+  TECH STACK
+────────────────────────────────────────────────────────────────────
+
+YOUR BUILDER (shell)
+  - Next.js               App shell + API routes
+  - Tailwind CSS          Builder UI styling
+  - Supabase              Database (prompts, snapshots, deployments)
+
+AI LAYER
+  - GPT-4o-mini           Intent classifier + planning step (fast/cheap)
+  - GPT-4o / Claude       Main code generator (user picks)
+  - Google Gemini         Optional provider
+  - Groq LLaMA            Optional provider (fastest streaming)
+
+EXECUTION
+  - WebContainers         Node.js runtime in browser via WASM (StackBlitz)
+  - React + Vite          Every generated app uses this (NOT Next.js)
+  - Tailwind CSS          Every generated app uses this
+  - React Router v6       Routing in generated apps
+
+DEPLOYMENT / EXPORT
+  - Vercel API            POST /v13/deployments → returns live URL
+  - GitHub REST API       OAuth → create repo → commit files (no git CLI)
+
+
+────────────────────────────────────────────────────────────────────
+  ARCHITECTURE FLOW
+────────────────────────────────────────────────────────────────────
+
+1. PROJECT BRIEF (User)
+   - 4-question guided intake before any code is written
+   - What problem · Who it's for · Core action · Inspiration
+   - AI synthesizes a Product Brief, user confirms
+   - POST /api/chat with full message history
+
+2. NEXT.JS API ROUTE
+   - Keeps all LLM API keys server-side
+   - Injects system prompt
+   - Routes to chosen provider
+
+3. INTENT CLASSIFIER (GPT-4o-mini)
+   - Classifies every message before sending to main model
+   - create  → full generation mode
+   - refine  → diff-only mode (only changed files)
+   - debug   → error fix mode
+   - explain → describe code, no file output
+
+4. PLANNING STEP (same fast model)
+   - Breaks complex requests into ordered task list
+   - Output wrapped in <plan> tags
+   - Rendered as visible Blueprint card in UI before generation
+   - One cheap API call, makes system feel agentic
+
+5. MAIN AI GENERATOR (GPT-4o / Claude)
+   - Receives: system prompt + project state JSON + message history
+   - Outputs: <plan> tasks + <project> files in one stream
+   - On refinement: outputs only changed files
+
+6. STREAM PARSER
+   - Reads SSE stream chunk by chunk
+   - Extracts <file> blocks → WebContainer FS (parallel writes)
+   - Extracts <shell> blocks → command queue (sequential)
+   - Updates Project State JSON as files are written
+   - Counts files written per message (for "X files changed" badge)
+
+7. WEBCONTAINER
+   - Full Node.js in browser via WASM
+   - Receives files in parallel
+   - Runs commands sequentially: npm install → vite --host
+   - Error detected → capture stack trace → send to AI → patch → reload
+
+8. LIVE PREVIEW
+   - Split pane: chat left, preview right (always both visible)
+   - iframe showing running app on :5173
+   - Route map sidebar (all pages listed, clickable)
+   - AI-generated app name + SVG logo injected into app
+
+9. DEPLOY + GITHUB
+   - /api/deploy → Vercel API → live URL
+   - /api/github → GitHub OAuth → create repo → commit all files
+   - "Push & Deploy" button fires both simultaneously
+   - Both URLs saved to Supabase deployments table
+
+10. SUPABASE (background writes, non-blocking)
+    - Every prompt saved to prompts table
+    - File tree saved to snapshots table on each deploy
+    - Vercel URL + GitHub URL saved to deployments table
+
+
+────────────────────────────────────────────────────────────────────
+  PROJECT STATE JSON (maintained alongside WebContainer)
+────────────────────────────────────────────────────────────────────
+
+  {
+    "name": "AppName",
+    "routes": ["/", "/dashboard", "/settings"],
+    "components": ["Navbar", "Sidebar", "Card"],
+    "dependencies": ["react-router-dom", "recharts"],
+    "recentFiles": ["src/pages/Dashboard.jsx"]
+  }
+
+  - Updated every time AI writes files
+  - Sent as context instead of full file tree on refinements
+  - Reduces tokens, gives AI structural awareness
+
+
+────────────────────────────────────────────────────────────────────
+  SUPABASE SCHEMA
+────────────────────────────────────────────────────────────────────
+
+  projects
+    id, user_id, name, brief (jsonb), created_at
+
+  prompts
+    id, project_id (FK), role (user|assistant), message, created_at
+
+  snapshots
+    id, project_id (FK), prompt_id (FK), files (jsonb), created_at
+
+  deployments
+    id, snapshot_id (FK), vercel_url, github_url, deployed_at
+
+
+────────────────────────────────────────────────────────────────────
+  FULL FEATURE LIST
+────────────────────────────────────────────────────────────────────
+
+CORE PIPELINE
+  [x] Project Brief Mode (4-question intake before building)
+  [x] Multi-provider AI (GPT-4o, Claude, Gemini, Groq — user picks)
+  [x] Intent Classifier (create / refine / debug / explain)
+  [x] Project State JSON (structural context, replaces full file tree)
+  [x] Planning Step with visible task list before generation
+  [x] Single-model "2-agent" output (<plan> + <project> in one call)
+  [x] Stream Parser (XML tag extraction, parallel files, sequential shell)
+  [x] WebContainer execution (npm install → vite --host)
+  [x] Live Preview split pane (chat left, preview right)
+  [x] Route Map Sidebar (all pages listed, click to navigate)
+
+VISUAL / UX FEATURES
+  [x] Animated File Generation Log
+        - Checklist style, file names appear one by one as parser writes
+        - NOT a spinner — actual task names ticking off
+  [x] Project Blueprint Preview
+        - <plan> output rendered as visual card before code generates
+        - User sees exactly what's about to be built
+        - Confirms before generation starts
+  [x] Refinement Mode "Files Changed" badge
+        - Shows "X files changed" after every refinement message
+        - Makes intent classifier's efficiency visible to judges
+        - Proves system isn't regenerating entire project each time
+  [x] Streaming Progress Bar
+        - Shows current task (Installing... / Writing file... / Starting server...)
+        - File names appear as they're written
+
+SHIPPING FEATURES
+  [x] Vercel One-Click Deploy (/api/deploy → Vercel API)
+  [x] GitHub Push (/api/github → GitHub REST API, no git CLI)
+  [x] "Push & Deploy" combined button (both fire simultaneously)
+  [x] AI-generated App Name + SVG Logo (injected into app automatically)
+
+CONTENT FEATURES
+  [x] 6 App Templates (pre-filled briefs for common use cases)
+        - SaaS Dashboard
+        - E-commerce Store
+        - Link-in-bio Page
+        - Blog / CMS
+        - Booking System
+        - Invoice Generator
+
+LIVE ERROR RECOVERY
+  [x] WebContainer error detected → stack trace captured
+  [x] Silently sent to AI with relevant file context
+  [x] AI patches specific file → WebContainer hot-reloads
+  [x] User sees app fix itself (no red screen)
+
+DATA / HISTORY
+  [x] Supabase prompt history (every message saved)
+  [x] Supabase snapshots (file tree saved per deploy)
+  [x] Supabase deployment history (URLs + timestamps)
+  [x] Version rollback (restore any snapshot to WebContainer)
+
+RELIABILITY FEATURES
+  [x] Fallback non-streaming mode
+        - If streaming parser fails mid-generation, auto-fallback
+          to non-streaming API route that returns full response
+        - Same parser logic, just no chunked reading
+        - User gets slightly slower but complete response
+        - No broken states, no dead screens
+        - Implementation: same /api/chat route, stream: false fallback
+
+  [x] localStorage project state cache
+        - projectState JSON saved to localStorage on every update
+        - Survives page refresh (WebContainer resets but state does not)
+        - On reload: restore projectState from localStorage
+        - User can continue conversation with full context intact
+        - 30 minutes to implement
+
+  [x] Quick Start for returning users
+        - If project exists in Supabase or localStorage, show
+          "Continue where you left off" option on landing
+        - Skips the 4-question brief entirely
+        - Shows product thinking: tool respects returning user's time
+        - Small UI shortcut, ~1 hour to build
+
+  [x] Regenerate Plan button
+        - Appears on the Blueprint card before generation starts
+        - Re-runs planning step call with same brief
+        - Replaces <plan> output without restarting from scratch
+        - Gives user control over AI's interpretation
+        - Demo moment: shows user is in control of planning
+        - ~1 hour to build
+
+UX POLISH FEATURES
+  [x] Error recovery visible indicator
+        - When AI self-heals a crash, show a toast or status badge:
+          "Issue detected and fixed automatically"
+        - Makes the autonomous error recovery visible to judges
+        - Without this, self-healing is invisible and wasted
+        - 30 minutes to implement
+
+  [x] Collapsible blueprint card
+        - Blueprint card auto-collapses when first file starts writing
+        - Small "View Plan" toggle to re-expand
+        - Does not take up space during active generation
+        - 30 minutes to implement
+
+  [x] Copy code button on generation log files
+        - Each file name in the generation log has a copy button
+        - Copies that file's content to clipboard
+        - Useful for debugging and transparency for judges
+        - Shows actual code being generated without opening GitHub
+        - 20 minutes to implement
+
+
+────────────────────────────────────────────────────────────────────
+  SYSTEM PROMPT (LOCKED)
+────────────────────────────────────────────────────────────────────
+
+You are an expert full-stack software architect.
+Generate complete, immediately runnable web applications
+and modify them precisely when asked.
+
+OUTPUT FORMAT
+─────────────
+On INITIAL BUILD:
+
+<plan>
+  1. task description
+  2. task description
+</plan>
+
+<project>
+  <file path="package.json">...</file>
+  <file path="vite.config.js">...</file>
+  <file path="src/main.jsx">...</file>
+  <shell>npm install</shell>
+</project>
+
+On REFINEMENT (only changed files):
+
+<plan>
+  1. what you're changing and why
+</plan>
+
+<project>
+  <file path="only/changed/file.jsx">...</file>
+</project>
+
+On DEBUG:
+
+<fix>
+  <file path="file/with/error.jsx">...</file>
+</fix>
+
+PROJECT CONTEXT (injected per request):
+  projectState JSON sent with every message.
+  Never recreate files that already exist unless they need to change.
+
+TECH STACK RULES:
+  Framework  : React + Vite ONLY (NEVER Next.js)
+  Styling    : Tailwind CSS
+  Routing    : React Router v6
+  Language   : JavaScript
+  Dev script : "vite --host" (required — without this preview breaks)
+
+REQUIRED FILES (initial build only):
+  package.json, vite.config.js, index.html,
+  tailwind.config.js, postcss.config.js,
+  src/main.jsx, src/App.jsx, README.md
+
+RULES:
+  - No placeholder code. No TODO comments.
+  - Every page reachable via React Router.
+  - Working navbar on every page.
+  - Polished UI. No default browser styles.
+  - If API keys provided → wire in via src/config/integrations.js
+  - Never output text outside XML tags.
+  - Never explain. Just output.
+
+
+────────────────────────────────────────────────────────────────────
+  GITHUB PUSH FLOW
+────────────────────────────────────────────────────────────────────
+
+Step 1 : GitHub OAuth → access token stored in Supabase
+         Scopes needed: repo, workflow
+
+Step 2 : First push → POST /user/repos
+         { name: auto-generated from brief, private: false }
+
+Step 3 : Read file tree from WebContainer filesystem
+
+Step 4 : For each file → PUT /repos/{owner}/{repo}/contents/{path}
+         { message: "Initial commit", content: base64(fileContent) }
+         Run in parallel for speed
+
+Step 5 : Return repo URL → save to Supabase deployments table
+
+Subsequent pushes: fetch existing file SHA first → PUT to update
+
+UX NOTE: "Push & Deploy" fires Vercel + GitHub simultaneously.
+         User gets live URL + repo URL at the same time. One click.
+
+
+────────────────────────────────────────────────────────────────────
+  36-HOUR BUILD TIMELINE
+────────────────────────────────────────────────────────────────────
+
+Hour 00–08   Core pipeline
+               Next.js shell, /api/chat, stream parser,
+               WebContainer integration, Vite preview iframe
+               Goal: "hello world" generating and previewing end-to-end
+
+Hour 08–13   Intent classifier + Project State JSON + Planning step
+               Fast model classification, projectState object,
+               <plan> tag rendering as Blueprint card
+               This is your differentiator — give it proper time
+
+Hour 13–18   Single-model "2-agent" output + Streaming progress UI
+               <plan> + <project> in one stream, checklist UI,
+               file names appearing as parser writes them
+
+Hour 18–22   Live error recovery loop
+               WebContainer error detection, silent AI patch,
+               hot-reload. Test with a known breakage.
+
+Hour 22–27   Vercel deploy + GitHub push + Push & Deploy button
+               /api/deploy, /api/github, OAuth flow,
+               combined button, both URLs returned
+
+Hour 27–30   AI app name + SVG logo + 6 Templates
+               Name/logo injected into generated app automatically,
+               pre-filled brief templates on landing screen
+
+Hour 30–33   Files Changed badge + Blueprint Preview polish
+               Refinement counter UI, blueprint confirmation card,
+               route map sidebar
+
+Hour 33–36   Supabase writes + UI polish
+               Non-blocking DB writes, split pane refinement,
+               loading states, copy buttons, error messages
+
+Hour 36–42   Demo recording + pitch prep
+               Record 5-min demo video, README, architecture diagram
+
+Hour 42–48   Buffer
+               Bug fixes, last-minute polish, submission
+
+
+────────────────────────────────────────────────────────────────────
+  5-MINUTE DEMO SCRIPT
+────────────────────────────────────────────────────────────────────
+
+0:00 – 0:20   PROBLEM
+                "Founders have ideas. Code is the wall.
+                 We remove the wall."
+
+0:20 – 1:00   PROJECT BRIEF + TEMPLATE
+                Pick template: "SaaS Dashboard"
+                Show brief pre-filling → Blueprint card appears
+                User confirms → build starts
+                [judges see: product thinking, not just a prompt box]
+
+1:00 – 1:45   WATCH IT BUILD
+                Planning tasks tick off one by one
+                File names appear in generation log
+                Progress bar running
+                Preview snaps in
+                [judges see: multi-step pipeline, visual complexity]
+
+1:45 – 2:15   LIVE REFINEMENT
+                "Add a revenue chart to the dashboard"
+                Intent → refine mode
+                "2 files changed" badge appears
+                Only those files regenerate, instant hot-reload
+                [judges see: efficiency, not a one-shot generator]
+
+2:15 – 2:45   ERROR SELF-HEALING
+                Intentionally introduce known breakage
+                Error detected → AI patches silently → app recovers
+                [judges see: autonomous agentic loop]
+
+2:45 – 3:15   AI BRANDING
+                Show AI-generated app name + SVG logo
+                Already in the running app from the start
+                [judges see: polish, attention to detail]
+
+3:15 – 4:00   PUSH & DEPLOY
+                One button click
+                GitHub repo URL + Vercel live URL appear simultaneously
+                Click Vercel URL → app live on internet
+                [judges see: it actually ships something real]
+
+4:00 – 4:30   ARCHITECTURE (15–20 seconds only)
+                Show one clean diagram
+                "Intent classifier → planner → generator → WebContainer"
+                Don't over-explain
+                [judges see: technical depth]
+
+4:30 – 5:00   CLOSE
+                "5 minutes. A developer would charge
+                 $5,000 and 3 weeks. This is what we built."
+
+
+────────────────────────────────────────────────────────────────────
+  JUDGING CRITERIA MAPPING
+────────────────────────────────────────────────────────────────────
+
+Innovation (25%)
+  → Project Brief Mode + Intent Classifier + Planning Step
+  → "No other tool asks WHY before it builds"
+  → Blueprint Preview makes the planning visible
+
+Technical Complexity (25%)
+  → WebContainers + streaming parser + multi-model pipeline
+  → Project State JSON for context management
+  → Live error recovery feedback loop
+  → Show architecture diagram for 15–20 seconds
+
+Real-world Impact (20%)
+  → 6 templates showing concrete use cases
+  → Live Vercel URL + GitHub repo at end of demo
+  → "A founder went from idea to shipped in 5 minutes"
+
+UI/UX (15%)
+  → Split pane, animated file log, blueprint card
+  → Files Changed badge on refinements
+  → The generated app itself looks polished
+  → Your builder UI looks polished
+
+Presentation (15%)
+  → 8 demo moments, no dead air, under 5 minutes
+  → One clean architecture diagram, 15–20 seconds only
+  → Strong close line
+
+
+────────────────────────────────────────────────────────────────────
+  FEATURES INTENTIONALLY CUT
+────────────────────────────────────────────────────────────────────
+
+  Supabase rollback UI    → Keep DB writes, skip the UI (not in demo)
+  Voice input             → Gimmick, not worth demo time
+  Analytics injection     → Can't show in 5 min
+  Shareable gallery       → Nice but post-hackathon
+  Sandbox API validation  → Not worth the time
+  Full multi-agent system → Simulated with single model call instead
+  Next.js for gen apps    → Incompatible with WebContainer Node 20
+
+
+────────────────────────────────────────────────────────────────────
+  THE HARDEST PART OF THE ENTIRE SYSTEM
+────────────────────────────────────────────────────────────────────
+
+  The hardest part is NOT the AI.
+
+  It is: Stream Parser + WebContainer File Writes
+
+  You must do ALL of this correctly and in order:
+    1. Read streaming LLM response chunk by chunk
+    2. Detect <file> blocks as they arrive mid-stream
+    3. Extract the file path from the tag
+    4. Write file contents to WebContainer filesystem
+    5. Queue <shell> commands separately
+    6. Execute shell commands ONLY after ALL files are written
+
+  The correct order is non-negotiable:
+    write all files → confirm writes done → run shell commands
+
+  If done wrong:
+    npm install runs before files exist → everything fails silently
+
+  Common mistakes:
+    - Running npm install while files are still streaming
+    - Not waiting for WebContainer FS write promises to resolve
+    - Parsing file content incorrectly due to chunked stream boundaries
+      (a chunk boundary can split mid-tag — your parser must buffer)
+
+
+────────────────────────────────────────────────────────────────────
+  WHY WEBCONTAINERS FEEL HARD AT FIRST
+────────────────────────────────────────────────────────────────────
+
+  WebContainers run Node.js inside the browser via WASM.
+  Things behave slightly differently from normal Node:
+
+    Filesystem API    → async, promise-based, not fs.writeFileSync
+    Ports             → must use --host flag or iframe can't reach :5173
+    Install time      → npm install is slower than local, be patient
+    Memory limits     → browser tab has memory ceiling, keep apps lean
+    COOP/COEP headers → your Next.js host must set these headers or
+                        WebContainers won't initialise at all
+
+  ⚠️  THIS IS THE #1 SILENT FAILURE — ADD THIS BEFORE YOU START  ⚠️
+
+  Without these headers WebContainers throw a cryptic error and
+  nothing works. It looks like a code bug. It is not. It takes
+  2 minutes to fix if you know about it. Hours if you don't.
+
+  Add this to next.config.js BEFORE writing any other code:
+
+    const nextConfig = {
+      async headers() {
+        return [
+          {
+            source: "/(.*)",
+            headers: [
+              {
+                key: "Cross-Origin-Embedder-Policy",
+                value: "require-corp",
+              },
+              {
+                key: "Cross-Origin-Opener-Policy",
+                value: "same-origin",
+              },
+            ],
+          },
+        ];
+      },
+    };
+    module.exports = nextConfig;
+
+  Do this on line 1 of your project. Not hour 10.
+
+  Most WebContainer bugs are environment bugs, not code bugs.
+  When something breaks, check these before touching your logic.
+
+
+────────────────────────────────────────────────────────────────────
+  CORRECT BUILD ORDER (FOLLOW THIS EXACTLY)
+────────────────────────────────────────────────────────────────────
+
+  STEP 1 — WebContainer smoke test (3 hours)
+  ───────────────────────────────────────────
+  Before writing any AI code, manually prove WebContainers work.
+
+  Hardcode these two files and write them to WebContainer FS:
+    - package.json  (minimal React + Vite)
+    - src/main.jsx  (just renders <h1>Hello</h1>)
+
+  Then run sequentially:
+    npm install
+    npm run dev
+
+  Open the iframe pointing at :5173.
+  If you see "Hello" → WebContainers work. Continue.
+  If you don't → fix this before touching anything else.
+  Do NOT skip this step. Everything depends on it working.
+
+  STEP 2 — AI generates files, you write them (4 hours)
+  ───────────────────────────────────────────────────────
+  Send this exact prompt to your AI:
+    "Generate a minimal React Vite project with Tailwind CSS.
+     Output files using <file path="..."> tags."
+
+  Take the AI response (non-streaming first, simpler to debug).
+  Parse it manually.
+  Write those files into WebContainer.
+  Run the server.
+  Confirm preview works.
+
+  STEP 3 — Build the stream parser (6 hours)
+  ────────────────────────────────────────────
+  This is the hardest step. Take the most time here.
+
+  Switch from non-streaming to streaming response.
+  Parse <file path="..."> blocks as chunks arrive.
+  Key challenge: chunk boundaries can split mid-tag.
+  You MUST buffer incomplete tags across chunks.
+
+  Parser logic:
+    - Maintain a buffer string
+    - Append each chunk to buffer
+    - Check if buffer contains complete <file>...</file> block
+    - If complete → extract path + content → write to FS → clear
+    - If incomplete → keep buffering → wait for next chunk
+    - Collect <shell> commands separately into a queue
+    - After stream ends → execute shell queue sequentially
+
+  Test with slow streaming (add artificial delay) to catch
+  edge cases where tags split across chunk boundaries.
+
+  STEP 4 — Add planning step (2 hours)
+  ──────────────────────────────────────
+  Parse <plan> tags from the stream.
+  Render them as the Blueprint card UI before files appear.
+  Show tasks ticking off as corresponding files are written.
+
+  STEP 5 — Add refinement mode (3 hours)
+  ────────────────────────────────────────
+  Wire up intent classifier.
+  On refine → tell AI to output only changed files.
+  Count files written → show "X files changed" badge.
+  Confirm hot-reload works without full server restart.
+
+  STEP 6 — Add deploy + GitHub (4 hours)
+  ────────────────────────────────────────
+  /api/deploy → Vercel API
+  /api/github → GitHub REST API
+  "Push & Deploy" combined button
+  Save URLs to Supabase
+
+
+────────────────────────────────────────────────────────────────────
+  YOUR BIGGEST ADVANTAGE GOING INTO THIS
+────────────────────────────────────────────────────────────────────
+
+  Most hackathon teams start coding blindly.
+  They figure out the architecture at hour 20.
+  They run out of time before the demo holds together.
+
+  You already have:
+    - Full pipeline mapped out
+    - Stack decided with reasons
+    - Every feature mapped to a demo moment
+    - Build order that de-risks the hardest parts first
+    - A 5-minute demo script written before a line of code exists
+    - Known failure points documented in advance
+
+  The stream parser and WebContainer section will still be hard.
+  But you know it's coming, you know why it's hard, and you know
+  to prove WebContainers work BEFORE building anything on top of it.
+
+  That alone puts you ahead of 80% of the field.
+
+
+────────────────────────────────────────────────────────────────────
+  HACKATHON TIPS (remind when done building)
+────────────────────────────────────────────────────────────────────
+
+  Trick 1 — Pre-Warm the AI Call
+  Trick 2 — Use a Scripted "Refinement Prompt" (don't improvise)
+  Trick 3 — Show Architecture Slide for Only 15–20 Seconds
+
+
+════════════════════════════════════════════════════════════════════
+  END OF PLAN. NOW GO BUILD.
+════════════════════════════════════════════════════════════════════
+
+
+════════════════════════════════════════════════════════════════════
+  TEAM SPLIT — 3 PEOPLE
+  All full-stack · 36-48 hour hackathon
+════════════════════════════════════════════════════════════════════
+
+GOLDEN RULE: No two people touch the same file at the same time.
+Each person owns a layer. Handoffs happen through agreed interfaces.
+
+────────────────────────────────────────────────────────────────────
+  PERSON 1 — "The Engine"
+  WebContainer + Stream Parser + Error Recovery
+────────────────────────────────────────────────────────────────────
+
+  This is the hardest and most critical module.
+  Give it to your strongest systems thinker.
+
+  Owns these files:
+    lib/webcontainer.js       WebContainer init + file writes
+    lib/parser.js             Stream parser (XML tag extraction)
+    lib/shellQueue.js         Sequential shell command executor
+    lib/errorRecovery.js      Error detection + AI patch loop
+    lib/projectState.js       Project state JSON management
+                              + localStorage cache
+
+  Responsibilities:
+    - WebContainer smoke test (Step 1 — do this first, hour 0)
+    - COOP/COEP headers in next.config.js (do this on minute 1)
+    - Stream parser with chunk boundary buffering
+    - Parallel file writes, sequential shell queue
+    - Error detection from WebContainer output
+    - projectState JSON updated on every file write
+    - localStorage save/restore for page refresh survival
+    - Expose a clean API for Person 2 to call:
+
+        initWebContainer()
+        writeFiles(files[])
+        runShell(commands[])
+        getProjectState()
+        onError(callback)
+        onFileWritten(callback)   ← Person 3 hooks into this
+        onShellOutput(callback)   ← Person 3 hooks into this
+
+  Start with:
+    Hour 0-3   → WebContainer smoke test (prove it works first)
+    Hour 3-8   → Stream parser + file writes + shell queue
+    Hour 8-12  → Error recovery loop
+    Hour 12-16 → projectState + localStorage cache
+
+  Handoff to Person 2: working writeFiles() and runShell() functions
+  Handoff to Person 3: onFileWritten() and onShellOutput() callbacks
+
+────────────────────────────────────────────────────────────────────
+  PERSON 2 — "The Brain"
+  AI Pipeline + API Routes + Deploy + GitHub
+────────────────────────────────────────────────────────────────────
+
+  Owns these files:
+    app/api/chat/route.js         Main AI streaming endpoint
+    app/api/deploy/route.js       Vercel deployment endpoint
+    app/api/github/route.js       GitHub push endpoint
+    lib/intentClassifier.js       GPT-4o-mini intent detection
+    lib/planningStep.js           Task planning before generation
+    lib/providers.js              Multi-provider config (Groq/Gemini etc)
+    lib/supabase.js               All DB writes (prompts/snapshots/deployments)
+    lib/fallback.js               Non-streaming fallback mode
+
+  Responsibilities:
+    - /api/chat: intent classify → planning step → stream to generator
+    - Multi-provider switching (Groq primary, Gemini fallback)
+    - System prompt injection + projectState JSON in context
+    - Non-streaming fallback if streaming parser fails
+    - /api/deploy: read file tree → POST to Vercel API → return URL
+    - /api/github: OAuth → create repo → commit all files via REST API
+    - Supabase writes (non-blocking, fire and forget)
+    - "Push & Deploy" combined endpoint
+
+  Start with:
+    Hour 0-4   → /api/chat with Groq streaming, basic system prompt
+    Hour 4-8   → Intent classifier + planning step
+    Hour 8-12  → /api/deploy + /api/github + combined button
+    Hour 12-16 → Fallback mode + Supabase writes + multi-provider
+
+  Handoff to Person 1: SSE stream from /api/chat to feed the parser
+  Handoff to Person 3: deploy/github URLs to show in UI
+
+────────────────────────────────────────────────────────────────────
+  PERSON 3 — "The Face"
+  UI + Chat + Preview + All Visual Features
+────────────────────────────────────────────────────────────────────
+
+  Owns these files:
+    app/page.jsx                  Landing page + template picker
+    app/builder/page.jsx          Main builder split-pane layout
+    components/Brief.jsx          4-question intake + quick start
+    components/Chat.jsx           Message thread + input
+    components/Preview.jsx        iframe + route map sidebar
+    components/BlueprintCard.jsx  Plan display + collapsible + regenerate btn
+    components/FileLog.jsx        Animated file generation log + copy btn
+    components/ProgressBar.jsx    Streaming progress indicator
+    components/FilesChanged.jsx   "X files changed" badge
+    components/ErrorToast.jsx     "Issue detected and fixed" indicator
+    components/DeployBar.jsx      Push & Deploy button + URL display
+    styles/                       All Tailwind config + global styles
+
+  Responsibilities:
+    - Landing page with 6 templates (pre-filled briefs)
+    - Split pane layout (chat left, preview right)
+    - Brief intake flow + quick start for returning users
+    - Blueprint card (collapsible, regenerate button)
+    - Animated file generation log (checklist, copy buttons)
+    - Streaming progress bar
+    - "X files changed" badge on refinements
+    - Error recovery toast notification
+    - Route map sidebar in preview pane
+    - Push & Deploy button + showing both URLs
+    - Hook into Person 1's callbacks for live UI updates:
+        onFileWritten → tick off file in log
+        onShellOutput → update progress bar
+
+  Start with:
+    Hour 0-4   → Landing page + split pane layout + brief intake
+    Hour 4-10  → File log + progress bar + blueprint card
+    Hour 10-14 → Preview iframe + route map sidebar
+    Hour 14-18 → Deploy bar + error toast + files changed badge
+    Hour 18-22 → Templates + quick start + polish
+
+────────────────────────────────────────────────────────────────────
+  SHARED FILES (agree on these before anyone writes code)
+────────────────────────────────────────────────────────────────────
+
+  next.config.js      Person 1 writes this on minute 1 (COOP/COEP)
+  .env.local          One person creates, share via private message
+                      (GROQ_API_KEY, SUPABASE_URL, SUPABASE_KEY,
+                       GITHUB_CLIENT_ID, VERCEL_TOKEN)
+  types/index.js      Agree on shared data shapes before splitting:
+
+    Message   { role, content, timestamp }
+    FileAction { path, content }
+    ShellAction { command }
+    ProjectState { name, routes, components, dependencies, recentFiles }
+    Deployment  { vercelUrl, githubUrl, deployedAt }
+
+────────────────────────────────────────────────────────────────────
+  INTEGRATION POINTS (where modules connect)
+────────────────────────────────────────────────────────────────────
+
+  Person 2 → Person 1:
+    /api/chat streams SSE → Person 1's parser consumes it
+    Agreed format: SSE chunks containing <file> and <shell> XML tags
+
+  Person 1 → Person 3:
+    onFileWritten(filename, content) → Person 3 ticks file log
+    onShellOutput(line) → Person 3 updates progress bar
+    onError(trace) → Person 3 shows error toast after AI fixes it
+
+  Person 2 → Person 3:
+    /api/deploy returns { vercelUrl } → Person 3 shows in deploy bar
+    /api/github returns { repoUrl } → Person 3 shows in deploy bar
+    planningStep returns tasks[] → Person 3 renders blueprint card
+
+────────────────────────────────────────────────────────────────────
+  FIRST 2 HOURS — DO THIS TOGETHER BEFORE SPLITTING
+────────────────────────────────────────────────────────────────────
+
+  Before anyone writes their own code, spend 2 hours together:
+
+  1. Person 1 → add COOP/COEP headers to next.config.js
+  2. Person 1 → run WebContainer smoke test, confirm preview works
+  3. Person 2 → create /api/chat, confirm Groq streaming works
+  4. Person 3 → scaffold split pane layout, confirm iframe renders
+  5. All 3    → agree on types/index.js shared data shapes
+  6. All 3    → confirm .env.local shared and working
+
+  Only split after all 6 confirm. This prevents 3 people building
+  on broken foundations and discovering it at hour 20.
+
+────────────────────────────────────────────────────────────────────
+  SYNC POINTS DURING THE HACKATHON
+────────────────────────────────────────────────────────────────────
+
+  Hour 8    → Person 1 + Person 2 integration check
+               Parser consuming real AI stream end-to-end?
+               If not, fix before continuing.
+
+  Hour 16   → All 3 integration check
+               Full pipeline: brief → build → preview working?
+               If not, stop and fix before adding more features.
+
+  Hour 28   → Demo run-through together
+               Is the 5-minute demo holdable?
+               Cut features if needed, polish what works.
+
+  Hour 36   → Final polish + demo recording
+               All 3 review UI together
+               Record demo video
+
+════════════════════════════════════════════════════════════════════
