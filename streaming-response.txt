@@ -1,0 +1,1094 @@
+data: <plan>
+data:   <step>1. Initialize project state with provided JSON</step>
+data:   <step>2. Create a minimal project structure</step>
+data:   <step>3. Define project metadata (name, description, etc.)</step>
+data:   <step>4. Set up project dependencies and requirements</step>
+data:   <step>5. Establish project goals and objectives</step>
+data: </plan>
+
+data: <
+
+data: plan
+
+data: >
+data: 
+
+data:  
+
+data:  
+
+data: 1
+
+data: .
+
+data:  Initialize
+
+data:  project
+
+data:  with
+
+data:  required
+
+data:  files
+
+data:  and
+
+data:  dependencies
+
+data: .
+data: 
+
+data:  
+
+data:  
+
+data: 2
+
+data: .
+
+data:  Configure
+
+data:  React
+
+data: ,
+
+data:  V
+
+data: ite
+
+data: ,
+
+data:  Tail
+
+data: wind
+
+data:  CSS
+
+data: ,
+
+data:  and
+
+data:  React
+
+data:  Router
+
+data: .
+data: 
+
+data: </
+
+data: plan
+
+data: >
+data: 
+data: 
+
+data: <
+
+data: project
+
+data: >
+data: 
+
+data:  
+
+data:  <
+
+data: file
+
+data:  path
+
+data: ="
+
+data: package
+
+data: .json
+
+data: ">
+
+data: {
+data: 
+
+data:    
+
+data:  "
+
+data: name
+
+data: ":
+
+data:  "
+
+data: minimal
+
+data: -project
+
+data: ",
+data: 
+
+data:    
+
+data:  "
+
+data: version
+
+data: ":
+
+data:  "
+
+data: 1
+
+data: .
+
+data: 0
+
+data: .
+
+data: 0
+
+data: ",
+data: 
+
+data:    
+
+data:  "
+
+data: scripts
+
+data: ":
+
+data:  {
+data: 
+
+data:      
+
+data:  "
+
+data: dev
+
+data: ":
+
+data:  "
+
+data: v
+
+data: ite
+
+data:  --
+
+data: host
+
+data: "
+data: 
+
+data:    
+
+data:  },
+data: 
+
+data:    
+
+data:  "
+
+data: dependencies
+
+data: ":
+
+data:  {
+data: 
+
+data:      
+
+data:  "
+
+data: react
+
+data: ":
+
+data:  "^
+
+data: 18
+
+data: .
+
+data: 2
+
+data: .
+
+data: 0
+
+data: ",
+data: 
+
+data:      
+
+data:  "
+
+data: react
+
+data: -dom
+
+data: ":
+
+data:  "^
+
+data: 18
+
+data: .
+
+data: 2
+
+data: .
+
+data: 0
+
+data: ",
+data: 
+
+data:      
+
+data:  "
+
+data: react
+
+data: -router
+
+data: -dom
+
+data: ":
+
+data:  "^
+
+data: 6
+
+data: .
+
+data: 3
+
+data: .
+
+data: 0
+
+data: ",
+data: 
+
+data:      
+
+data:  "
+
+data: tail
+
+data: wind
+
+data: css
+
+data: ":
+
+data:  "^
+
+data: 3
+
+data: .
+
+data: 1
+
+data: .
+
+data: 8
+
+data: ",
+data: 
+
+data:      
+
+data:  "
+
+data: v
+
+data: ite
+
+data: ":
+
+data:  "^
+
+data: 3
+
+data: .
+
+data: 1
+
+data: .
+
+data: 0
+
+data: "
+data: 
+
+data:    
+
+data:  }
+data: 
+
+data:  
+
+data:  }</
+
+data: file
+
+data: >
+data: 
+
+data:  
+
+data:  <
+
+data: file
+
+data:  path
+
+data: ="
+
+data: v
+
+data: ite
+
+data: .config
+
+data: .js
+
+data: ">
+
+data: import
+
+data:  {
+
+data:  define
+
+data: Config
+
+data:  }
+
+data:  from
+
+data:  '
+
+data: v
+
+data: ite
+
+data: '
+data: 
+
+data: import
+
+data:  react
+
+data:  from
+
+data:  '@
+
+data: v
+
+data: ite
+
+data: js
+
+data: /plugin
+
+data: -react
+
+data: '
+data: 
+data: 
+
+data: export
+
+data:  default
+
+data:  define
+
+data: Config
+
+data: ({
+data: 
+
+data:  
+
+data:  plugins
+
+data: :
+
+data:  [
+
+data: react
+
+data: ()]
+data: 
+
+data: })
+
+data: </
+
+data: file
+
+data: >
+data: 
+
+data:  
+
+data:  <
+
+data: file
+
+data:  path
+
+data: ="
+
+data: src
+
+data: /main
+
+data: .jsx
+
+data: ">
+
+data: import
+
+data:  React
+
+data:  from
+
+data:  '
+
+data: react
+
+data: '
+data: 
+
+data: import
+
+data:  ReactDOM
+
+data:  from
+
+data:  '
+
+data: react
+
+data: -dom
+
+data: /client
+
+data: '
+data: 
+
+data: import
+
+data:  {
+
+data:  BrowserRouter
+
+data:  }
+
+data:  from
+
+data:  '
+
+data: react
+
+data: -router
+
+data: -dom
+
+data: '
+data: 
+
+data: import
+
+data:  App
+
+data:  from
+
+data:  './
+
+data: App
+
+data: '
+data: 
+data: 
+
+data: ReactDOM
+
+data: .create
+
+data: Root
+
+data: (document
+
+data: .getElementById
+
+data: ('
+
+data: root
+
+data: ')).
+
+data: render
+
+data: (
+data: 
+
+data:  
+
+data:  &
+
+data: lt
+
+data: ;
+
+data: React
+
+data: .Strict
+
+data: Mode
+
+data: &gt
+
+data: ;
+data: 
+
+data:    
+
+data:  &
+
+data: lt
+
+data: ;
+
+data: BrowserRouter
+
+data: &gt
+
+data: ;
+data: 
+
+data:      
+
+data:  &
+
+data: lt
+
+data: ;
+
+data: App
+
+data:  /
+
+data: &
+
+data: gt
+
+data: ;
+data: 
+
+data:    
+
+data:  &
+
+data: lt
+
+data: ;/
+
+data: BrowserRouter
+
+data: &gt
+
+data: ;
+data: 
+
+data:  
+
+data:  &
+
+data: lt
+
+data: ;/
+
+data: React
+
+data: .Strict
+
+data: Mode
+
+data: &gt
+
+data: ;
+data: 
+
+data: )</
+
+data: file
+
+data: >
+data: 
+
+data:  
+
+data:  <
+
+data: file
+
+data:  path
+
+data: ="
+
+data: src
+
+data: /App
+
+data: .jsx
+
+data: ">
+
+data: import
+
+data:  React
+
+data:  from
+
+data:  '
+
+data: react
+
+data: '
+data: 
+
+data: import
+
+data:  {
+
+data:  Link
+
+data:  }
+
+data:  from
+
+data:  '
+
+data: react
+
+data: -router
+
+data: -dom
+
+data: '
+data: 
+data: 
+
+data: function
+
+data:  App
+
+data: ()
+
+data:  {
+data: 
+
+data:  
+
+data:  return
+
+data:  (
+data: 
+
+data:    
+
+data:  &
+
+data: lt
+
+data: ;
+
+data: div
+
+data: &gt
+
+data: ;
+data: 
+
+data:      
+
+data:  &
+
+data: lt
+
+data: ;
+
+data: nav
+
+data: &gt
+
+data: ;
+data: 
+
+data:        
+
+data:  &
+
+data: lt
+
+data: ;
+
+data: ul
+
+data: &gt
+
+data: ;
+data: 
+
+data:          
+
+data:  &
+
+data: lt
+
+data: ;
+
+data: li
+
+data: &gt
+
+data: ;&
+
+data: lt
+
+data: ;
+
+data: Link
+
+data:  to
+
+data: ="/"
+
+data: &
+
+data: gt
+
+data: ;
+
+data: Home
+
+data: &lt
+
+data: ;/
+
+data: Link
+
+data: &gt
+
+data: ;&
+
+data: lt
+
+data: ;/
+
+data: li
+
+data: &gt
+
+data: ;
+data: 
+
+data:        
+
+data:  &
+
+data: lt
+
+data: ;/
+
+data: ul
+
+data: &gt
+
+data: ;
+data: 
+
+data:      
+
+data:  &
+
+data: lt
+
+data: ;/
+
+data: nav
+
+data: &gt
+
+data: ;
+data: 
+
+data:      
+
+data:  &
+
+data: lt
+
+data: ;
+
+data: h
+
+data: 1
+
+data: &gt
+
+data: ;
+
+data: Welcome
+
+data:  to
+
+data:  Minimal
+
+data:  Project
+
+data: &lt
+
+data: ;/
+
+data: h
+
+data: 1
+
+data: &gt
+
+data: ;
+data: 
+
+data:    
+
+data:  &
+
+data: lt
+
+data: ;/
+
+data: div
+
+data: &gt
+
+data: ;
+data: 
+
+data:  
+
+data:  )
+data: 
+
+data: }
+data: 
+data: 
+
+data: export
+
+data:  default
+
+data:  App
+
+data: </
+
+data: file
+
+data: >
+data: 
+
+data:  
+
+data:  <
+
+data: file
+
+data:  path
+
+data: ="
+
+data: index
+
+data: .html
+
+data: ">&
+
+data: lt
+
+data: ;
+
+data: html
+
+data:  lang
+
+data: ="
+
+data: en
+
+data: "&
+
+data: gt
+
+data: ;
+data: 
+
+data:  
+
+data:  &
+
+data: lt
+
+data: ;
+
+data: head
+
+data: &gt
+
+data: ;
+data: 
+
+data:    
+
+data:  &
+
+data: lt
+
+data: ;
+
+data: meta
+
+data:  charset
+
+data: ="
+
+data: UTF
+
+data: -
+
+data: 8
+
+data: "
+
+data:  /
+
+data: &
+
+data: gt
+
+data: ;
+data: 
+
+data:    
+
+data:  &
+
+data: lt
+
+data: ;
+
+data: meta
+
+data:  name
+
+data: ="
+
+data: viewport
+
+data: "
+
+data:  content
+
+data: ="
+
+data: width
+
+data: =device
+
+data: -width
+
+data: ,
+
+data:  initial
+
+data: -scale
+
+data: =
+
+data: 1
+
+data: .
+
+data: 0
+
+data: "
+
+data:  /
+
+data: &
+
+data: gt
+
+data: ;
+data: 
+
+data:    
+
+data:  &
+
+data: lt
+
+data: ;
+
+data: title
+
+data: &gt
+
+data: ;
+
+data: Minimal
+
+data:  Project
+
+data: &lt
+
+data: ;/
+
+data: title
+
+data: &gt
+
+data: ;
+data: 
+
+data:  
+
+data:  &
+
+data: lt
+
+data: ;/
+
+data: head
+
+data: &gt
+
+data: ;
+data: 
+
+data:  
+
+data:  &
+
+data: lt
+
+data: ;
+
+data: body
+
+
