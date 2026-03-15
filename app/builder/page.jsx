@@ -10,6 +10,7 @@ import FilesChanged from "../../components/FilesChanged.jsx";
 import Preview from "../../components/Preview.jsx";
 import ProgressBar from "../../components/ProgressBar.jsx";
 import { BUILDER_EVENTS } from "../../lib/builderEvents.js";
+import { getBuilderRuntime } from "../../lib/builderRuntime.js";
 
 function readStored(key, fallback) {
   try {
@@ -19,25 +20,9 @@ function readStored(key, fallback) {
   }
 }
 
-function extractPlan(text) {
-  if (!text) return "";
-  const match = text.match(/<plan>[\s\S]*?<\/plan>/i);
-  return match ? match[0] : "";
-}
-
-function extractFiles(text) {
-  if (!text) return [];
-  const files = [];
-  const regex = /<file\s+path="([^"]+)">([\s\S]*?)<\/file>/gi;
-  let match;
-  while ((match = regex.exec(text))) {
-    files.push({
-      path: match[1],
-      content: match[2],
-      status: "done",
-    });
-  }
-  return files;
+function buildPlan(tasks = []) {
+  if (!tasks.length) return "";
+  return `<plan>\n${tasks.map((task, index) => `  ${index + 1}. ${task}`).join("\n")}\n</plan>`;
 }
 
 export default function BuilderPage() {
@@ -50,6 +35,7 @@ export default function BuilderPage() {
   const [previewUrl, setPreviewUrl] = useState("http://localhost:5173");
   const [filesChanged, setFilesChanged] = useState(0);
   const [toastVisible, setToastVisible] = useState(false);
+  const [toastMessage, setToastMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [deployState, setDeployState] = useState({ vercelUrl: null, githubUrl: null, isLoading: false });
 
@@ -58,6 +44,21 @@ export default function BuilderPage() {
   useEffect(() => {
     localStorage.setItem("builder:messages", JSON.stringify(messages));
   }, [messages]);
+
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      try {
+        const runtime = await getBuilderRuntime();
+        await runtime.init();
+      } catch {
+        if (!alive) return;
+      }
+    })();
+    return () => {
+      alive = false;
+    };
+  }, []);
 
   useEffect(() => {
     const handleFile = (event) => {
@@ -86,7 +87,14 @@ export default function BuilderPage() {
       }
     };
 
-    const handleError = () => {
+    const handleError = (event) => {
+      if (event?.detail?.fixed) {
+        setToastMessage("Issue detected and fixed automatically.");
+      } else if (event?.detail?.error) {
+        setToastMessage(`Issue detected: ${event.detail.error}`);
+      } else {
+        setToastMessage("Issue detected and fixed automatically.");
+      }
       setToastVisible(true);
       setTimeout(() => setToastVisible(false), 4000);
     };
@@ -132,27 +140,40 @@ export default function BuilderPage() {
     setMessages(nextMessages);
 
     try {
-      const res = await fetch("/api/chat", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
+      const runtime = await getBuilderRuntime();
+      await runtime.init();
+      const result = await runtime.runTurn(
+        {
           messages: nextMessages,
-          stream: false,
+          stream: true,
           projectState: readStored("builder:projectState", {}),
-        }),
-      });
-      const data = await res.json();
-      const assistantContent = data.content || "";
-      const newPlan = data.plan || extractPlan(assistantContent);
-      const newFiles = extractFiles(assistantContent);
+        },
+        {
+          onPlan: (tasks) => {
+            setPlan(buildPlan(tasks));
+            setProgressLabel("Generating files");
+            setProgress(35);
+          },
+          onFile: (event) => {
+            setFiles((prev) => {
+              if (prev.some((f) => f.path === event.path)) return prev;
+              return [...prev, { path: event.path, content: event.content || "", status: "pending" }];
+            });
+            setProgressLabel("Writing files");
+            setProgress(60);
+          },
+          onShell: (event) => {
+            setProgressLabel(`Running ${event.command}`);
+            setProgress(80);
+          },
+        }
+      );
 
-      setPlan(newPlan);
-      setFilesChanged(newFiles.length);
-      if (newFiles.length > 0) {
-        setFiles((prev) => [...prev, ...newFiles]);
-      }
-
-      setMessages((prev) => [...prev, { role: "assistant", content: assistantContent || "Build complete." }]);
+      setFilesChanged(result.filesWritten || 0);
+      setMessages((prev) => [
+        ...prev,
+        { role: "assistant", content: `Build complete. ${result.filesWritten || 0} files written.` },
+      ]);
       setProgressLabel("Complete");
       setProgress(100);
     } catch (error) {
@@ -232,7 +253,7 @@ export default function BuilderPage() {
         </div>
       </section>
 
-      <ErrorToast visible={toastVisible} />
+      <ErrorToast visible={toastVisible} message={toastMessage} />
     </main>
   );
 }
