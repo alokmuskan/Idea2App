@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import BlueprintCard from "../../components/BlueprintCard.jsx";
 import Chat from "../../components/Chat.jsx";
 import DeployBar from "../../components/DeployBar.jsx";
@@ -9,10 +9,12 @@ import FileLog from "../../components/FileLog.jsx";
 import FilesChanged from "../../components/FilesChanged.jsx";
 import Preview from "../../components/Preview.jsx";
 import ProgressBar from "../../components/ProgressBar.jsx";
+import ShellLog from "../../components/ShellLog.jsx";
 import { BUILDER_EVENTS } from "../../lib/builderEvents.js";
 import { getBuilderRuntime } from "../../lib/builderRuntime.js";
 
 function readStored(key, fallback) {
+  if (typeof window === "undefined") return fallback;
   try {
     return JSON.parse(localStorage.getItem(key) || JSON.stringify(fallback));
   } catch {
@@ -26,20 +28,30 @@ function buildPlan(tasks = []) {
 }
 
 export default function BuilderPage() {
-  const [messages, setMessages] = useState(() => readStored("builder:messages", []));
+  const [messages, setMessages] = useState([]);
   const [plan, setPlan] = useState("");
   const [files, setFiles] = useState([]);
   const [progressLabel, setProgressLabel] = useState("Idle");
   const [progress, setProgress] = useState(0);
-  const [routes, setRoutes] = useState(() => readStored("builder:projectState", {}).routes || []);
-  const [previewUrl, setPreviewUrl] = useState("http://localhost:5173");
+  const [routes, setRoutes] = useState([]);
+  const [previewUrl, setPreviewUrl] = useState("");
   const [filesChanged, setFilesChanged] = useState(0);
   const [toastVisible, setToastVisible] = useState(false);
   const [toastMessage, setToastMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [deployState, setDeployState] = useState({ vercelUrl: null, githubUrl: null, isLoading: false });
+  const [shellLines, setShellLines] = useState([]);
 
-  const brief = useMemo(() => readStored("builder:brief", null), []);
+  const [brief, setBrief] = useState(null);
+
+  useEffect(() => {
+    setMessages(readStored("builder:messages", []));
+    const storedState = readStored("builder:projectState", {});
+    if (Array.isArray(storedState.routes)) {
+      setRoutes(storedState.routes);
+    }
+    setBrief(readStored("builder:brief", null));
+  }, []);
 
   useEffect(() => {
     localStorage.setItem("builder:messages", JSON.stringify(messages));
@@ -78,6 +90,12 @@ export default function BuilderPage() {
     const handleShell = (event) => {
       const line = String(event.detail?.line || "");
       if (!line) return;
+      const lines = line.split(/\r?\n/).filter(Boolean);
+      setShellLines((prev) => {
+        const next = [...prev, ...lines];
+        return next.length > 200 ? next.slice(-200) : next;
+      });
+      console.log("[shell]", line);
       if (line.toLowerCase().includes("install")) {
         setProgressLabel("Installing dependencies");
         setProgress(55);
@@ -241,6 +259,7 @@ export default function BuilderPage() {
           <Chat messages={messages} onSend={handleSend} isLoading={isLoading} />
           <ProgressBar label={progressLabel} progress={progress} />
           <FileLog files={files} onCopy={handleCopy} />
+          <ShellLog lines={shellLines} />
         </div>
         <div className="grid gap-6">
           <Preview url={previewUrl} routes={routes} title={brief?.coreAction || "Generated app"} />
