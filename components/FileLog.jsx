@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 export default function FileLog({ files = [], onCopy }) {
   return (
@@ -24,7 +24,7 @@ export default function FileLog({ files = [], onCopy }) {
                         : "border-border bg-white"
                     }`}
                   >
-                    {file.status === "done" ? "?" : file.status === "error" ? "!" : "�"}
+                    {file.status === "done" ? "✓" : file.status === "error" ? "!" : "•"}
                   </span>
                   <span className="font-medium text-ink">{file.path}</span>
                 </div>
