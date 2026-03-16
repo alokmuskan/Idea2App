@@ -61,14 +61,13 @@ function sseHeaders() {
   };
 }
 
-// Send a data-only SSE event (one message).
+// Send a data-only SSE event (one message per chunk, encoded to preserve whitespace).
 function enqueueSSE(controller, encoder, text) {
   if (!text) return;
-  const lines = String(text).split(/\r?\n/);
-  for (const line of lines) {
-    controller.enqueue(encoder.encode(`data: ${line}\n`));
-  }
-  controller.enqueue(encoder.encode("\n"));
+  // Base64-encode the chunk so newlines and leading spaces inside code are preserved.
+  // The consumer must decode accordingly.
+  const encoded = Buffer.from(text).toString("base64");
+  controller.enqueue(encoder.encode(`data: ${encoded}\n\n`));
 }
 
 // Send a named SSE event (used for errors).
